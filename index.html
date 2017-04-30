@@ -69,6 +69,10 @@ body {
     margin : auto;
 }
 
+iframe {
+    width : 100%;
+}
+
 .link_preview .link_preview_text_big {
     padding-bottom : 10px;
     margin-top : 0px;
@@ -152,12 +156,15 @@ body {
                 vid = value.substr( vindex + 20 );
             }
             if( vid != "" && vid != null ){
+                vid = vid.split('&')[0]  
                 preview_img.id = vid;
                 preview_img.onclick = function(event){
                     event.stopPropagation();
                     event.preventDefault();
-                    this.nextElementSibling.className = "link_preview_text_big";
-                    var iframe = $("iframe");
+                    if( this.nextElementSibling){
+                        this.nextElementSibling.className = "link_preview_text_big";
+                    }
+                    var iframe =document.createElement("iframe");
                     iframe.style.height = this.clientHeight;
                     iframe.src = "https://youtube.com/embed/"  + this.id.split('&')[0];
                     iframe.allowFullscreen = true;

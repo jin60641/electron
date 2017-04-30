@@ -89,6 +89,7 @@ app.on('ready', function(){
 	function showWin() {
         if (win !== null) {
             win.show();
+            win.focus();
         }
     }
     function hideWin() {

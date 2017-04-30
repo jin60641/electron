@@ -3,6 +3,7 @@ var ytdl = require('youtube-dl');
 var async = require('async');
 var {dialog} =require('electron');
 var fs = require('fs-extra');
+var path = require('path');
 
 function getMeta(body){
     var head = body.substring( body.indexOf("<head>") + 6, body.indexOf("</head>") - 1);
@@ -40,7 +41,6 @@ function Parse(url,cb){
         } else {
             var metas = getMeta(body);
             if( metas.title ){
-                console.log(metas);
                 cb(metas);
             } else {
                 cb("파싱할 데이터가 없습니다");
@@ -52,18 +52,18 @@ function Parse(url,cb){
 function getAudio(vid,cb){
     var url = 'http://www.youtube.com/watch?v=' + vid;
     console.log("getAduio : " + url)
-    ytdl.getInfo( url, function( err, info ){
+    ytdl.getInfo( url, [], { maxBuffer : 1000 * 1024 }, function( err, info ){
         var duration;
         if( info && info.duration ){
             duration = info.duration.split(':');
         }
         if( info == undefined || info.duration == undefined ){
-            cb("잘못된 링크입니다")
+            cb("잘못된 링크입니다 : " + vid)
         } else if( duration.length >= 3 || (duration.length == 2 && duration[0] > 10 ) ){
             cb("10분 이내의 영상만 음원을 추출할 수 있습니다.")
         } else {
             console.log("Duration : " + duration);
-            ytdl.exec( url, ['-F'], {}, function(err,list){
+            ytdl.exec( url, ['-F'], { maxBuffer : 1000 * 1024 }, function(err,list){
                 if( err ){
                     cb("저작권 문제로 사용하실 수 없는 영상입니다.");
                 } else {
@@ -72,19 +72,23 @@ function getAudio(vid,cb){
                         if( value.indexOf("audio only") >= 0 && ( value.indexOf("webm") >= 0 || value.indexOf("mp4") >= 0 ) && flag == 0 ){
                             flag = 1;
                             var num = value.split(' ')[0];
-                            var ystream = ytdl(url,['-f',num]);
-
-                            var path = dialog.showSaveDialog({
+                            var ystream = ytdl(url,['-f',num], { maxBuffer : 1000 * 1024 });
+                            
+                            var filepath = dialog.showOpenDialog({
                                 properties : ['openDirectory'],
-                                message:"저장할 경로를 지정해주세요."
+                                message: "저장할 폴더를 선택해주세요",
+                                defaultPath : path.join(process.env.HOME,"Downloads")
                             });
-                            path += ".";
+                            var title = info.title.replace(/(\*|\||\:|\?|\"|\'|\>|\<|\/| |\.|\\)/g,"_");
+                            console.log(title);
+                            var filename = title + ".";
                             var type = "mp4";
                             if( value.indexOf("webm") >= 0 ){
                                 type = "webm";
                             }
-                            path += type;
-                            var fstream = fs.createWriteStream( path );
+                            filename += type;
+                            
+                            var fstream = fs.createWriteStream( path.join(filepath[0],filename) );
                             var stream = ystream.pipe(fstream);
                             stream.on('finish',function(){
                                 cb("저장이 완료되었습니다.")
