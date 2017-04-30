@@ -1,0 +1,225 @@
+<html>
+    <head>  
+        <style>
+body {
+    width : 600;
+}
+#input {
+    width : 400px;
+}
+.link_preview {
+    cursor : pointer;
+    display : block;
+    margin-top : 10px;
+    box-shadow : 0 0 0 1.5px rgba(0, 0, 0, .1) inset, 0 1px 1px rgba(0, 0, 0, .05);
+    white-space : pre-line;
+    color : black;
+}
+
+.link_preview:visited {
+    color : black;
+}
+
+
+.link_preview .link_preview_img {
+    margin : 0px;
+}
+
+.link_preview .link_preview_img .link_preview_helper {
+    display : none;
+}
+.link_preview .link_preview_img_big .link_preview_helper {
+    display : block;
+    width : 100%;
+    height : 3px;
+    position : absolute;
+    bottom : 0px;
+    background-color : white;
+}
+
+.link_preview_img {
+    position : relative;
+    display : inline-block;
+    overflow : hidden;
+}
+
+.link_preview_img img {
+    max-width : 100%;
+    max-height : 100%;
+    transition : all .2s ease;
+}
+
+.link_preview_img img:hover {
+    transform : scale(1.1);
+}
+
+.link_preview_img_big {
+    width : 100%;
+}
+.link_preview_img_small {
+    vertical-align : top;
+    background-color : #f2f2f2;
+    height : 100%;
+    width : 150px;
+    height : 150px;
+}
+
+.link_preview_img_small img {
+    display : block;
+    margin : auto;
+}
+
+.link_preview .link_preview_text_big {
+    padding-bottom : 10px;
+    margin-top : 0px;
+}
+
+.link_preview_text_small {
+    width : calc( 100% - 170px );
+    display : inline-block;
+}
+
+.link_preview .link_preview_text {
+    display : inline-block;
+    margin : 10px;
+    margin-bottom : 0px;
+    font-size : 17px;
+}
+
+.link_preview_title {
+    font-weight : bold;
+    margin : 10px;
+}
+
+.link_preview_description {
+    font-size : 15px;
+    margin : 10px;
+}
+
+.link_preview_description span {
+    color : #aaa;
+
+}
+
+.link_preview_site_name {
+    font-size : 13px;
+}
+
+        </style>
+    </head>
+    <title>
+        html파싱&음원추출
+        </title>
+    <script>
+        const {shell,ipcRenderer} = require('electron');
+        ipcRenderer.on('getaudio_success',function(evt,result){
+            alert(result);
+        });
+        ipcRenderer.on('parse_success',function(evt,metas){
+            if( typeof metas == "string" ){
+                alert(metas);
+                return;
+            }
+            var preview = document.createElement("a");
+            document.body.appendChild( preview );
+            preview.onclick = function(){
+                shell.openExternal(metas.url);            
+            };
+            preview.target = "_blank";
+            preview.className = "link_preview";
+            var preview_img = document.createElement("div");
+            preview_img.className = "link_preview_img";
+            preview.appendChild( preview_img );
+
+            var preview_text = document.createElement("div");
+            preview_text.className = "link_preview_text";
+            preview.appendChild( preview_text );
+
+            var preview_title = document.createElement("div");
+            preview_title.innerText = metas.title;
+            preview_title.className = "link_preview_title";
+            preview_text.appendChild( preview_title );
+            
+            var vid;
+            var vindex;
+            var value = metas.url;
+            vindex = value.indexOf("youtu.be/");
+            if( vindex >= 0 ){
+                vid = value.substr( vindex + 9 );
+            }
+            vindex = value.indexOf("youtube.com/watch?v=");
+            if( vindex >= 0 ){
+                vid = value.substr( vindex + 20 );
+            }
+            if( vid != "" && vid != null ){
+                preview_img.id = vid;
+                preview_img.onclick = function(event){
+                    event.stopPropagation();
+                    event.preventDefault();
+                    this.nextElementSibling.className = "link_preview_text_big";
+                    var iframe = $("iframe");
+                    iframe.style.height = this.clientHeight;
+                    iframe.src = "https://youtube.com/embed/"  + this.id.split('&')[0];
+                    iframe.allowFullscreen = true;
+                    this.parentNode.replaceChild(iframe,this);
+                }
+                var getaudio = document.createElement("input");
+                getaudio.type = "button";
+                getaudio.value = "음원추출";
+                getaudio.onclick = function(){
+                    alert("영상에 따라 약간의 시간이 소요될 수 있습니다.");
+                    ipcRenderer.send('getaudio',vid);
+                }
+                document.body.appendChild(getaudio);
+            } else {
+                var preview_description = document.createElement("div");
+    //          preview_description.innerHTML = metas.description;
+                preview_description.innerHTML = metas.description;
+                preview_text.appendChild( preview_description );
+                if( metas.description.length > 100 ){
+                    preview_description.innerHTML += '... <span>자세히</span>';
+                }
+                preview_description.className = "link_preview_description";
+            }
+            var tmpimg = new Image;
+            tmpimg.src = metas.image;
+            var realimg = document.createElement('img');
+            realimg.src = metas.image;
+            preview_img.appendChild(realimg);
+            tmpimg.onload = function(){
+                if( tmpimg.naturalWidth >= preview_img.parentNode.clientWidth ){
+                    preview_img.className += " link_preview_img_big";
+                    preview_text.className += " link_preview_text_big";
+                } else {
+                    preview_img.className += " link_preview_img_small";
+                    preview_text.className += " link_preview_text_small";
+                }
+            }
+            var preview_helper = document.createElement("div");
+            preview_helper.className = "link_preview_helper";
+            preview_img.appendChild(preview_helper);
+            
+        });
+        window.addEventListener('load',function(){
+            var input = document.createElement("input");
+            input.id="input";
+            input.placeholder="주소를 입력해주세요";
+            input.type="text";
+            document.body.appendChild(input);
+            var send = document.createElement("input");
+            send.type = "button";
+            send.id = "send";
+            send.value = "파싱";
+            send.onclick = function(){
+                var value = document.getElementById("input").value;
+                if( value.length == 0 ){
+                    alert("주소를 입력해주세요.");
+                    return;
+                }
+                ipcRenderer.send('parse',value);
+            }
+            document.body.appendChild(send);
+        });
+    </script>
+    <body> </body>
+</html>
