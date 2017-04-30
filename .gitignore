@@ -37,7 +37,7 @@ jspm_packages
 .node_repl_history
 
 # etc files
-gitignore
-vscode/launch.json
-npm-debug.log
+.gitignore
+.vscode/launch.json
+.npm-debug.log
 
